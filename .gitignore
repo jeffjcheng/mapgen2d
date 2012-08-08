@@ -1,0 +1,6 @@
+*.csproj
+*.mdp
+*.mds
+*.sln
+*.userprefs
+*.pidb

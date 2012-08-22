@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace mapgen {
+namespace Mapgen2d {
 	public enum MapDirection {
 		NORTH,
 		SOUTH,
@@ -194,6 +194,8 @@ namespace mapgen {
 		}
 		
 		public static void PrintMap( Tile[,] map ) {
+			Console.WriteLine( "Map dimensions: "+map.GetLength(0)+","+map.GetLength(1) );
+			
 			int x = map.GetLength( 0 );
 			int y = map.GetLength( 1 );
 			

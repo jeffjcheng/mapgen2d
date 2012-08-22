@@ -1,6 +1,6 @@
 using System;
 
-namespace mapgen {
+namespace Mapgen2d {
 	public class Tile {
 		private static int group_id_counter = 0;
 		internal static int next_group_id {

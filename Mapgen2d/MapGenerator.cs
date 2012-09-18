@@ -21,6 +21,8 @@ namespace Mapgen2d {
 		
 		private Random _r;
 		
+		private List<Point> seeds;
+		
 		public float roomBias = 0.1f;
 		
 		public float inflationBias = 0.7f;
@@ -58,6 +60,7 @@ namespace Mapgen2d {
 		/// Randomly place single-tile "rooms" in the map
 		/// </summary>
 		private void SeedRooms( ref Tile[,] map ) {
+			seeds = new List<Point>();
 			int x = map.GetLength(0);
 			int y = map.GetLength(1);
 			
@@ -67,7 +70,7 @@ namespace Mapgen2d {
 					if( _r.NextDouble() < roomBias ) {
 						map[a,b] = new Tile( Tile.Type.ROOM );
 						map[a,b].group_id = Tile.next_group_id;
-						
+						seeds.Add( new MapGenerator.Point() { _x = a, _y = b } );
 					} else {
 						map[a,b] = new Tile( Tile.Type.IMPASSABLE );
 					}
@@ -153,7 +156,37 @@ namespace Mapgen2d {
 		}
 		
 		private void LinkRooms( ref Tile[,] map ) {
-			
+			for( int a = 0 ; a < seeds.Count ; a++ ) {
+				for( int b = a+1 ; b < seeds.Count ; b++ ) {
+					Point p1 = seeds[a];
+					Point p2 = seeds[b];
+					
+					float dx = p1._x - p2._x;
+					float dy = p1._y - p2._y;
+					
+					float rx = dx / (dx + dy);
+					
+					float ix = p1._x;
+					float iy = p1._y;
+					
+					while( ix != p2._x && iy != p2._y ) {
+						if( _r.NextDouble < rx ) {
+							ix += System.Math.Abs( dx ) / dx;
+						} else {
+							iy += System.Math.Abs( dy ) / dy;
+						}
+						
+						if( map[ix,iy].type == Tile.Type.IMPASSABLE ) {
+							map[ix,iy].type = Tile.Type.HALL;
+						}
+						
+						dx = (ix - p2._x);
+						dy = (iy - p2._y);
+						
+						rx = dx / (dx + dy);
+					}
+				}
+			}
 		}
 		
 		/// <summary>

@@ -53,6 +53,8 @@ namespace Mapgen2d {
 			
 			BuildRooms( ref map );
 			
+			LinkRooms( ref map );
+			
 			return map;
 		}
 		
@@ -161,29 +163,32 @@ namespace Mapgen2d {
 					Point p1 = seeds[a];
 					Point p2 = seeds[b];
 					
-					float dx = p1._x - p2._x;
-					float dy = p1._y - p2._y;
+					// diffs
+					int dx = p1._x - p2._x;
+					int dy = p1._y - p2._y;
 					
-					float rx = dx / (dx + dy);
+					// indices
+					int ix = p1._x;
+					int iy = p1._y;
 					
-					float ix = p1._x;
-					float iy = p1._y;
+					// direction randomiser
+					float rx;
 					
-					while( ix != p2._x && iy != p2._y ) {
-						if( _r.NextDouble < rx ) {
-							ix += System.Math.Abs( dx ) / dx;
+					while( ix != p2._x || iy != p2._y ) {
+						dx = ix - p2._x;
+						dy = iy - p2._y;
+						
+						rx = Math.Abs( (float)dx / (float)(dx + dy) );
+						
+						if( _r.NextDouble() < rx ) {
+							ix -= Math.Sign( dx );
 						} else {
-							iy += System.Math.Abs( dy ) / dy;
+							iy -= Math.Sign( dy );
 						}
 						
 						if( map[ix,iy].type == Tile.Type.IMPASSABLE ) {
 							map[ix,iy].type = Tile.Type.HALL;
 						}
-						
-						dx = (ix - p2._x);
-						dy = (iy - p2._y);
-						
-						rx = dx / (dx + dy);
 					}
 				}
 			}
@@ -234,7 +239,23 @@ namespace Mapgen2d {
 			
 			for( int a = 0 ; a < x ; a++ ) {
 				for( int b = 0 ; b < y ; b++ ) {
-					Console.Write( (map[a,b].group_id == -1? "---" : map[a,b].group_id.ToString( "000" ))+" " );
+					Tile t = map[a,b];
+					
+					switch( t.type ) {
+					case Tile.Type.HALL:
+						Console.Write( "+++" );
+						break;
+						
+					case Tile.Type.ROOM:
+						Console.Write( t.group_id.ToString( "000" ) );
+						break;
+						
+					default: // or IMPASSABLE
+						Console.Write( "---" );
+						break;
+					}
+					
+					Console.Write( " " );
 				}
 				
 				Console.WriteLine();

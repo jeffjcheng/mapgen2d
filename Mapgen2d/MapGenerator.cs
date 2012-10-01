@@ -10,12 +10,20 @@ namespace Mapgen2d {
 	}
 	
 	public class MapGenerator {
-		internal struct Point {
+		public struct Point {
 			internal int _x;
 			internal int _y;
 			
 			override public string ToString() {
 				return _x+","+_y;
+			}
+			
+			public static bool operator ==( Point p1, Point p2 ) {
+				return p1._x == p2._x && p1._y == p2._y;
+			}
+			
+			public static bool operator !=( Point p1, Point p2 ) {
+				return p1._x != p2._x || p1._y != p2._y;
 			}
 		}
 		
@@ -28,6 +36,8 @@ namespace Mapgen2d {
 		public float inflationBias = 0.7f;
 		
 		public float inflationDecay = 0.2f;
+		
+		public float excessHallwayModifier = 0.1f;
 		
 		public MapGenerator() {
 			_r = new Random();
@@ -43,17 +53,29 @@ namespace Mapgen2d {
 		public Tile[,] Generate( int x, int y ) {
 			Tile[,] map = new Tile[x,y];
 			
+			DateTime time_start = DateTime.UtcNow;
+			
 			SeedRooms( ref map );
+			Console.WriteLine( "seeding completed" );
 			
 			for( int a = 0 ; a < x ; a++ ) {
 				for( int b = 0 ; b < y ; b++ ) {
 					LinkSeeds( ref map, new Point() { _x = a, _y = b } );
 				}
 			}
+			Console.WriteLine( "seed links completed" );
 			
 			BuildRooms( ref map );
+			Console.WriteLine( "room expansion completed" );
 			
 			LinkRooms( ref map );
+			Console.WriteLine( "room linking completed" );
+			
+			DateTime time_end = DateTime.UtcNow;
+			Console.WriteLine( "map generation took "+(time_end.Subtract( time_start)).TotalSeconds );
+#if UNITY_ENGINE
+			Debug.Log( "map generation took "+(time_end.Subtract( time_start )).TotalSeconds );
+#endif
 			
 			return map;
 		}
@@ -159,9 +181,16 @@ namespace Mapgen2d {
 		
 		private void LinkRooms( ref Tile[,] map ) {
 			for( int a = 0 ; a < seeds.Count ; a++ ) {
+//				Console.WriteLine( "\n\nstarting a="+seeds[a].ToString() );
 				for( int b = a+1 ; b < seeds.Count ; b++ ) {
+//					Console.WriteLine( " starting a,b="+seeds[a].ToString()+":"+seeds[b].ToString() );
+						
 					Point p1 = seeds[a];
 					Point p2 = seeds[b];
+					
+					if( CheckConnectivity( ref map, p1, p2 ) && _r.NextDouble() > excessHallwayModifier ) {
+						break;
+					}
 					
 					// diffs
 					int dx = p1._x - p2._x;
@@ -175,6 +204,7 @@ namespace Mapgen2d {
 					float rx;
 					
 					while( ix != p2._x || iy != p2._y ) {
+//						Console.WriteLine( "  examining "+ix+","+iy );
 						dx = ix - p2._x;
 						dy = iy - p2._y;
 						
@@ -187,11 +217,52 @@ namespace Mapgen2d {
 						}
 						
 						if( map[ix,iy].type == Tile.Type.IMPASSABLE ) {
+//							Console.WriteLine( "+  changing "+ix+","+iy+" to hallway" );
 							map[ix,iy].type = Tile.Type.HALL;
 						}
 					}
 				}
 			}
+		}
+		
+		public static bool CheckConnectivity( ref Tile[,] map, Point source, Point target ) {
+			if( map[source._x, source._y].type == Tile.Type.IMPASSABLE )
+				return false;
+			
+			if( map[target._x, target._y].type == Tile.Type.IMPASSABLE )
+				return false;
+			
+//			Console.WriteLine( "> connectivity check start between "+source.ToString()+":"+target.ToString() );
+			List<Point> visited = new List<Point>();
+			Queue<Point> unvisited = new Queue<Point>();
+			
+			unvisited.Enqueue( source );
+			
+			while( unvisited.Count > 0 ) {
+				Point p = unvisited.Dequeue();
+				visited.Add( p );
+				
+//				Console.WriteLine( ">  compare "+p.ToString()+":"+target.ToString() );
+				
+				if( p == target ) {
+//					Console.WriteLine( "xxx connection exists "+source.ToString()+":"+target.ToString() );
+					return true;
+				}
+				
+				Point[] adj = GetAdjacentTiles( map, p );
+				foreach( Point n in adj ) {
+					if( map[n._x, n._y].type == Tile.Type.IMPASSABLE ) {
+						continue;
+					}
+					
+					if( !visited.Contains( n ) ) {
+						visited.Add( n );
+						unvisited.Enqueue( n );
+					}
+				}
+			}
+			
+			return false;
 		}
 		
 		/// <summary>
@@ -213,7 +284,7 @@ namespace Mapgen2d {
 			return false;
 		}
 		
-		private Point[] GetAdjacentTiles( Tile[,] map, Point target ) {
+		public static Point[] GetAdjacentTiles( Tile[,] map, Point target ) {
 			List<Point> pts = new List<Point>();
 			
 			if( target._x > 0 )

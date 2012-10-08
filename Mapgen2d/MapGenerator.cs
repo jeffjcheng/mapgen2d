@@ -341,8 +341,8 @@ namespace Mapgen2d {
 			int x = map.GetLength( 0 );
 			int y = map.GetLength( 1 );
 			
-			for( int a = 0 ; a < x ; a++ ) {
-				for( int b = 0 ; b < y ; b++ ) {
+			for( int b = 0 ; b < y ; b++ ) {
+				for( int a = 0 ; a < x ; a++ ) {
 					Tile t = map[a,b];
 					
 					switch( t.type ) {

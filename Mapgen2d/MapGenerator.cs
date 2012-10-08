@@ -55,20 +55,20 @@ namespace Mapgen2d {
 			
 			DateTime time_start = DateTime.UtcNow;
 			
-			SeedRooms( ref map );
+			SeedRooms( map );
 			Console.WriteLine( "seeding completed" );
 			
 			for( int a = 0 ; a < x ; a++ ) {
 				for( int b = 0 ; b < y ; b++ ) {
-					LinkSeeds( ref map, new Point() { _x = a, _y = b } );
+					LinkSeeds( map, new Point() { _x = a, _y = b } );
 				}
 			}
 			Console.WriteLine( "seed links completed" );
 			
-			BuildRooms( ref map );
+			BuildRooms( map );
 			Console.WriteLine( "room expansion completed" );
 			
-			LinkRooms( ref map );
+			LinkRooms( map );
 			Console.WriteLine( "room linking completed" );
 			
 			DateTime time_end = DateTime.UtcNow;
@@ -83,7 +83,7 @@ namespace Mapgen2d {
 		/// <summary>
 		/// Randomly place single-tile "rooms" in the map
 		/// </summary>
-		private void SeedRooms( ref Tile[,] map ) {
+		private void SeedRooms( Tile[,] map ) {
 			seeds = new List<Point>();
 			int x = map.GetLength(0);
 			int y = map.GetLength(1);
@@ -105,7 +105,7 @@ namespace Mapgen2d {
 		/// <summary>
 		/// Link adjacent seed rooms
 		/// </summary>
-		private void LinkSeeds( ref Tile[,] map, Point p ) {
+		private void LinkSeeds( Tile[,] map, Point p ) {
 			if( p._x < 0 || p._y < 0
 			 || p._x >= map.GetLength(0) || p._y >= map.GetLength(1) )
 				return;
@@ -124,7 +124,7 @@ namespace Mapgen2d {
 				if( map[pp._x, pp._y].type == Tile.Type.ROOM
 				 && map[pp._x, pp._y].group_id != group_id ) {
 					map[pp._x, pp._y].group_id = group_id;
-					LinkSeeds( ref map, pp );
+					LinkSeeds( map, pp );
 				}
 			}
 		}
@@ -132,7 +132,7 @@ namespace Mapgen2d {
 		/// <summary>
 		/// Grows seeded room tiles
 		/// </summary>
-		private void BuildRooms( ref Tile[,] map ) {
+		private void BuildRooms( Tile[,] map ) {
 			Queue<Point> seeds = new Queue<Point>();
 			
 			int x = map.GetLength(0);
@@ -150,21 +150,16 @@ namespace Mapgen2d {
 			int current_generation = 0;
 			int generation_members = seeds.Count;
 			
-//			Console.WriteLine( "\nseeding generation has "+generation_members+" members\n" );
-			
 			while( seeds.Count > 0 ) {
 				float chance = inflationBias - inflationDecay * current_generation;
 				
 				Point p = seeds.Dequeue();
 				
-//				Console.WriteLine( "\nseeding from "+p.ToString()+", groupid="+map[p._x, p._y].group_id );
-				
 				// attempt growth in all directions
 				Point[] targets = GetAdjacentTiles( map, p );
 				
 				foreach( var target in targets ) {
-					if( TrySeed( ref map, target, chance ) ) {
-//						Console.WriteLine( "> growing to "+target.ToString() );
+					if( TrySeed( map, target, chance ) ) {
 						map[target._x, target._y].group_id = map[p._x, p._y].group_id;
 						seeds.Enqueue( target );
 					}
@@ -174,21 +169,17 @@ namespace Mapgen2d {
 				if( --generation_members <= 0 ) {
 					current_generation++;
 					generation_members = seeds.Count;
-//					Console.WriteLine( "\npreparing to iterate on generation "+current_generation+" with "+generation_members+" members" );
 				}
 			}
 		}
 		
-		private void LinkRooms( ref Tile[,] map ) {
+		private void LinkRooms( Tile[,] map ) {
 			for( int a = 0 ; a < seeds.Count ; a++ ) {
-//				Console.WriteLine( "\n\nstarting a="+seeds[a].ToString() );
 				for( int b = a+1 ; b < seeds.Count ; b++ ) {
-//					Console.WriteLine( " starting a,b="+seeds[a].ToString()+":"+seeds[b].ToString() );
-						
 					Point p1 = seeds[a];
 					Point p2 = seeds[b];
 					
-					if( CheckConnectivity( ref map, p1, p2 ) && _r.NextDouble() > excessHallwayModifier ) {
+					if( CheckConnectivity( map, p1, p2 ) && _r.NextDouble() > excessHallwayModifier ) {
 						break;
 					}
 					
@@ -204,7 +195,6 @@ namespace Mapgen2d {
 					float rx;
 					
 					while( ix != p2._x || iy != p2._y ) {
-//						Console.WriteLine( "  examining "+ix+","+iy );
 						dx = ix - p2._x;
 						dy = iy - p2._y;
 						
@@ -217,7 +207,6 @@ namespace Mapgen2d {
 						}
 						
 						if( map[ix,iy].type == Tile.Type.IMPASSABLE ) {
-//							Console.WriteLine( "+  changing "+ix+","+iy+" to hallway" );
 							map[ix,iy].type = Tile.Type.HALL;
 						}
 					}
@@ -225,14 +214,13 @@ namespace Mapgen2d {
 			}
 		}
 		
-		public static bool CheckConnectivity( ref Tile[,] map, Point source, Point target ) {
+		public static bool CheckConnectivity( Tile[,] map, Point source, Point target ) {
 			if( map[source._x, source._y].type == Tile.Type.IMPASSABLE )
 				return false;
 			
 			if( map[target._x, target._y].type == Tile.Type.IMPASSABLE )
 				return false;
 			
-//			Console.WriteLine( "> connectivity check start between "+source.ToString()+":"+target.ToString() );
 			List<Point> visited = new List<Point>();
 			Queue<Point> unvisited = new Queue<Point>();
 			
@@ -242,10 +230,8 @@ namespace Mapgen2d {
 				Point p = unvisited.Dequeue();
 				visited.Add( p );
 				
-//				Console.WriteLine( ">  compare "+p.ToString()+":"+target.ToString() );
 				
 				if( p == target ) {
-//					Console.WriteLine( "xxx connection exists "+source.ToString()+":"+target.ToString() );
 					return true;
 				}
 				
@@ -268,7 +254,7 @@ namespace Mapgen2d {
 		/// <summary>
 		/// Tries to grow into the target position. Returns TRUE if seeding was successful
 		/// </summary>
-		private bool TrySeed( ref Tile[,] map, Point target, float chance ) {
+		private bool TrySeed( Tile[,] map, Point target, float chance ) {
 			if( target._x < 0 || target._y < 0
 			 || target._x >= map.GetLength(0) || target._y >= map.GetLength(1) )
 				return false;

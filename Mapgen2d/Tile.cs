@@ -43,7 +43,7 @@ namespace Mapgen2d {
 				break;
 				
 			case Type.ROOM:
-				_passage = new bool[] { true, true, true, true };
+				_passage = new bool[] { false, false, false, false };
 				break;
 				
 			case Type.IMPASSABLE:

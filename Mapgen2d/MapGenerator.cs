@@ -121,9 +121,9 @@ namespace Mapgen2d {
 			 || p._x >= map.GetLength(0) || p._y >= map.GetLength(1) )
 				return;
 			
-			if( map[p._x, p._y].type != Tile.Type.ROOM ) return;
+			if( map.t(p).type != Tile.Type.ROOM ) return;
 			
-			int group_id = map[p._x, p._y].group_id;
+			int group_id = map.t(p).group_id;
 			
 			Point[] p2 = GetAdjacentTiles( map, p );
 			
@@ -132,11 +132,41 @@ namespace Mapgen2d {
 				 || pp._y < 0 || pp._y >= map.GetLength( 1 ) )
 					continue;
 				
-				if( map[pp._x, pp._y].type == Tile.Type.ROOM
-				 && map[pp._x, pp._y].group_id != group_id ) {
-					map[pp._x, pp._y].group_id = group_id;
+				if( map.t(pp).type == Tile.Type.ROOM
+				 && map.t(pp).group_id != group_id ) {
+					AllowPassage( map, p, pp );
+					map.t(pp).group_id = group_id;
 					LinkSeeds( map, pp );
 				}
+			}
+		}
+		
+		private void AllowPassage( Tile[,] map, Point p1, Point p2 ) {
+			int dx = p1._x - p2._x;
+			int dy = p1._y - p2._y;
+			
+			if( Math.Abs( dx ) > 1 || Math.Abs( dy ) > 1 ) {
+				Console.WriteLine( p1 + " and " + p2 + " are not adjacent!" );
+				return;
+			}
+			
+			if( dx != 0 ^ dy == 0 ) {
+				Console.WriteLine( p1 + " and " + p2 + " are not adjacent!" );
+				return;
+			}
+			
+			if( dx < 0 ) {
+				map.t(p1).SetPassage( MapDirection.EAST, true );
+				map.t(p2).SetPassage( MapDirection.WEST, true );
+			} else if ( dx > 0 ) {
+				map.t(p1).SetPassage( MapDirection.WEST, true );
+				map.t(p2).SetPassage( MapDirection.EAST, true );
+			} else if( dy < 0 ) {
+				map.t(p1).SetPassage( MapDirection.SOUTH, true );
+				map.t(p2).SetPassage( MapDirection.NORTH, true );
+			} else if( dy > 0 ) {
+				map.t(p1).SetPassage( MapDirection.NORTH, true );
+				map.t(p2).SetPassage( MapDirection.SOUTH, true );
 			}
 		}
 		
@@ -171,7 +201,8 @@ namespace Mapgen2d {
 				
 				foreach( var target in targets ) {
 					if( TrySeed( map, target, chance ) ) {
-						map[target._x, target._y].group_id = map[p._x, p._y].group_id;
+						AllowPassage( map, p, target );
+						map.t(target).group_id = map[p._x, p._y].group_id;
 						seeds.Enqueue( target );
 					}
 				}
@@ -209,6 +240,8 @@ namespace Mapgen2d {
 						dx = ix - p2._x;
 						dy = iy - p2._y;
 						
+						Point t1 = new Point() { _x=ix, _y=iy };
+						
 						rx = Math.Abs( (float)dx / (float)(dx + dy) );
 						
 						if( _r.NextDouble() < rx ) {
@@ -217,8 +250,11 @@ namespace Mapgen2d {
 							iy -= Math.Sign( dy );
 						}
 						
+						Point t2 = new Point() { _x=ix, _y=iy };
+						
 						if( map[ix,iy].type == Tile.Type.IMPASSABLE ) {
 							map[ix,iy].type = Tile.Type.HALL;
+							AllowPassage( map, t1, t2 );
 						}
 					}
 				}
@@ -226,10 +262,10 @@ namespace Mapgen2d {
 		}
 		
 		public static bool CheckConnectivity( Tile[,] map, Point source, Point target ) {
-			if( map[source._x, source._y].type == Tile.Type.IMPASSABLE )
+			if( map.t(source).type == Tile.Type.IMPASSABLE )
 				return false;
 			
-			if( map[target._x, target._y].type == Tile.Type.IMPASSABLE )
+			if( map.t(target).type == Tile.Type.IMPASSABLE )
 				return false;
 			
 			List<Point> visited = new List<Point>();
@@ -248,7 +284,7 @@ namespace Mapgen2d {
 				
 				Point[] adj = GetAdjacentTiles( map, p );
 				foreach( Point n in adj ) {
-					if( map[n._x, n._y].type == Tile.Type.IMPASSABLE ) {
+					if( map.t(n).type == Tile.Type.IMPASSABLE ) {
 						continue;
 					}
 					
@@ -270,11 +306,11 @@ namespace Mapgen2d {
 			 || target._x >= map.GetLength(0) || target._y >= map.GetLength(1) )
 				return false;
 			
-			if( map[target._x, target._y].type != Tile.Type.IMPASSABLE )
+			if( map.t(target).type != Tile.Type.IMPASSABLE )
 				return false;
 			
 			if( _r.NextDouble() < chance ) {
-				map[target._x, target._y].type = Tile.Type.ROOM;
+				map.t(target).type = Tile.Type.ROOM;
 				return true;
 			}
 			
@@ -329,5 +365,11 @@ namespace Mapgen2d {
 				Console.WriteLine();
 			}
 		}
+	}
+
+	public static class MapGenExt {
+		public static Tile t( this Mapgen2d.Tile[,] map, Mapgen2d.MapGenerator.Point pt ) {
+			return map[pt._x,pt._y];
+		}	
 	}
 }

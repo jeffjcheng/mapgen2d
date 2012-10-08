@@ -39,11 +39,14 @@ namespace Mapgen2d {
 		
 		public float excessHallwayModifier = 0.1f;
 		
-		public MapGenerator() {
-			_r = new Random();
-		}
+		public int LastSeed { private set; get; }
+		
+		private int seed = -1;
+		
+		public MapGenerator() {}
 		
 		public void SetRandomSeed( int seed ) {
+			this.seed = seed;
 			_r = new Random( seed );
 		}
 		
@@ -51,6 +54,11 @@ namespace Mapgen2d {
 		/// Returns an array of tiles representing a map
 		/// </summary>
 		public Tile[,] Generate( int x, int y ) {
+			if( seed == -1 ) {
+				seed = DateTime.UtcNow.Ticks.GetHashCode();
+				_r = new Random( seed );
+			}
+			
 			Tile[,] map = new Tile[x,y];
 			
 			DateTime time_start = DateTime.UtcNow;
@@ -76,6 +84,9 @@ namespace Mapgen2d {
 #if UNITY_ENGINE
 			Debug.Log( "map generation took "+(time_end.Subtract( time_start )).TotalSeconds );
 #endif
+			
+			LastSeed = seed;
+			seed = -1;
 			
 			return map;
 		}

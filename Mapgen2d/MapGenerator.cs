@@ -11,19 +11,19 @@ namespace Mapgen2d {
 	
 	public class MapGenerator {
 		public struct Point {
-			internal int _x;
-			internal int _y;
+			public int x;
+			public int y;
 			
 			override public string ToString() {
-				return _x+","+_y;
+				return x+","+y;
 			}
 			
 			public static bool operator ==( Point p1, Point p2 ) {
-				return p1._x == p2._x && p1._y == p2._y;
+				return p1.x == p2.x && p1.y == p2.y;
 			}
 			
 			public static bool operator !=( Point p1, Point p2 ) {
-				return p1._x != p2._x || p1._y != p2._y;
+				return p1.x != p2.x || p1.y != p2.y;
 			}
 		}
 		
@@ -53,30 +53,30 @@ namespace Mapgen2d {
 		/// <summary>
 		/// Returns an array of tiles representing a map
 		/// </summary>
-		public Tile[,] Generate( int x, int y ) {
+		public Map Generate( int x, int y ) {
 			if( seed == -1 ) {
 				seed = DateTime.UtcNow.Ticks.GetHashCode();
 				_r = new Random( seed );
 			}
 			
-			Tile[,] map = new Tile[x,y];
+			Tile[,] tilemap = new Tile[x,y];
 			
 			DateTime time_start = DateTime.UtcNow;
 			
-			SeedRooms( map );
+			SeedRooms( tilemap );
 			Console.WriteLine( "seeding completed" );
 			
 			for( int a = 0 ; a < x ; a++ ) {
 				for( int b = 0 ; b < y ; b++ ) {
-					LinkSeeds( map, new Point() { _x = a, _y = b } );
+					LinkSeeds( tilemap, new Point() { x = a, y = b } );
 				}
 			}
 			Console.WriteLine( "seed links completed" );
 			
-			BuildRooms( map );
+			BuildRooms( tilemap );
 			Console.WriteLine( "room expansion completed" );
 			
-			LinkRooms( map );
+			LinkRooms( tilemap );
 			Console.WriteLine( "room linking completed" );
 			
 			DateTime time_end = DateTime.UtcNow;
@@ -87,8 +87,11 @@ namespace Mapgen2d {
 			
 			LastSeed = seed;
 			seed = -1;
+
+            Map m = new Map( tilemap );
+            m.seeds = seeds;
 			
-			return map;
+			return m;
 		}
 		
 		/// <summary>
@@ -105,7 +108,7 @@ namespace Mapgen2d {
 					if( _r.NextDouble() < roomBias ) {
 						map[a,b] = new Tile( Tile.Type.ROOM );
 						map[a,b].group_id = Tile.next_group_id;
-						seeds.Add( new MapGenerator.Point() { _x = a, _y = b } );
+						seeds.Add( new MapGenerator.Point() { x = a, y = b } );
 					} else {
 						map[a,b] = new Tile( Tile.Type.IMPASSABLE );
 					}
@@ -117,8 +120,8 @@ namespace Mapgen2d {
 		/// Link adjacent seed rooms
 		/// </summary>
 		private void LinkSeeds( Tile[,] map, Point p ) {
-			if( p._x < 0 || p._y < 0
-			 || p._x >= map.GetLength(0) || p._y >= map.GetLength(1) )
+			if( p.x < 0 || p.y < 0
+			 || p.x >= map.GetLength(0) || p.y >= map.GetLength(1) )
 				return;
 			
 			if( map.t(p).type != Tile.Type.ROOM ) return;
@@ -128,8 +131,8 @@ namespace Mapgen2d {
 			Point[] p2 = GetAdjacentTiles( map, p );
 			
 			foreach( var pp in p2 ) {
-				if( pp._x < 0 || pp._x >= map.GetLength( 0 )
-				 || pp._y < 0 || pp._y >= map.GetLength( 1 ) )
+				if( pp.x < 0 || pp.x >= map.GetLength( 0 )
+				 || pp.y < 0 || pp.y >= map.GetLength( 1 ) )
 					continue;
 				
 				if( map.t(pp).type == Tile.Type.ROOM
@@ -142,8 +145,8 @@ namespace Mapgen2d {
 		}
 		
 		private void AllowPassage( Tile[,] map, Point p1, Point p2 ) {
-			int dx = p1._x - p2._x;
-			int dy = p1._y - p2._y;
+			int dx = p1.x - p2.x;
+			int dy = p1.y - p2.y;
 			
 			if( Math.Abs( dx ) > 1 || Math.Abs( dy ) > 1 ) {
 				Console.WriteLine( p1 + " and " + p2 + " are not adjacent!" );
@@ -183,7 +186,7 @@ namespace Mapgen2d {
 			for( int a = 0 ; a < x ; a++ ) {
 				for( int b = 0 ; b < y ; b++ ) {
 					if( map[a,b].type == Tile.Type.ROOM ) {
-						seeds.Enqueue( new MapGenerator.Point() { _x = a, _y = b } );
+						seeds.Enqueue( new MapGenerator.Point() { x = a, y = b } );
 					}
 				}
 			}
@@ -202,7 +205,7 @@ namespace Mapgen2d {
 				foreach( var target in targets ) {
 					if( TrySeed( map, target, chance ) ) {
 						AllowPassage( map, p, target );
-						map.t(target).group_id = map[p._x, p._y].group_id;
+						map.t(target).group_id = map[p.x, p.y].group_id;
 						seeds.Enqueue( target );
 					}
 				}
@@ -226,21 +229,21 @@ namespace Mapgen2d {
 					}
 					
 					// diffs
-					int dx = p1._x - p2._x;
-					int dy = p1._y - p2._y;
+					int dx = p1.x - p2.x;
+					int dy = p1.y - p2.y;
 					
 					// indices
-					int ix = p1._x;
-					int iy = p1._y;
+					int ix = p1.x;
+					int iy = p1.y;
 					
 					// direction randomiser
 					float rx;
 					
-					while( ix != p2._x || iy != p2._y ) {
-						dx = ix - p2._x;
-						dy = iy - p2._y;
+					while( ix != p2.x || iy != p2.y ) {
+						dx = ix - p2.x;
+						dy = iy - p2.y;
 						
-						Point t1 = new Point() { _x=ix, _y=iy };
+						Point t1 = new Point() { x=ix, y=iy };
 						
 						rx = Math.Abs( (float)dx / (float)(dx + dy) );
 						
@@ -250,7 +253,7 @@ namespace Mapgen2d {
 							iy -= Math.Sign( dy );
 						}
 						
-						Point t2 = new Point() { _x=ix, _y=iy };
+						Point t2 = new Point() { x=ix, y=iy };
 						
 						if( map[ix,iy].type == Tile.Type.IMPASSABLE ) {
 							map[ix,iy].type = Tile.Type.HALL;
@@ -302,8 +305,8 @@ namespace Mapgen2d {
 		/// Tries to grow into the target position. Returns TRUE if seeding was successful
 		/// </summary>
 		private bool TrySeed( Tile[,] map, Point target, float chance ) {
-			if( target._x < 0 || target._y < 0
-			 || target._x >= map.GetLength(0) || target._y >= map.GetLength(1) )
+			if( target.x < 0 || target.y < 0
+			 || target.x >= map.GetLength(0) || target.y >= map.GetLength(1) )
 				return false;
 			
 			if( map.t(target).type != Tile.Type.IMPASSABLE )
@@ -320,20 +323,24 @@ namespace Mapgen2d {
 		public static Point[] GetAdjacentTiles( Tile[,] map, Point target ) {
 			List<Point> pts = new List<Point>();
 			
-			if( target._x > 0 )
-				pts.Add( new Point() { _x = target._x-1, _y = target._y } );
+			if( target.x > 0 )
+				pts.Add( new Point() { x = target.x-1, y = target.y } );
 			
-			if( target._x < map.GetLength( 0 )-1 )
-				pts.Add( new Point() { _x = target._x+1, _y = target._y } );
+			if( target.x < map.GetLength( 0 )-1 )
+				pts.Add( new Point() { x = target.x+1, y = target.y } );
 			
-			if( target._y > 0 )
-				pts.Add( new Point() { _x = target._x, _y = target._y-1 } );
+			if( target.y > 0 )
+				pts.Add( new Point() { x = target.x, y = target.y-1 } );
 			
-			if( target._y < map.GetLength( 1 )-1 )
-				pts.Add( new Point() { _x = target._x, _y = target._y+1 } );
+			if( target.y < map.GetLength( 1 )-1 )
+				pts.Add( new Point() { x = target.x, y = target.y+1 } );
 			
 			return pts.ToArray();
 		}
+
+        public static void PrintMap( Map map ) {
+            PrintMap( map.map );
+        }
 		
 		public static void PrintMap( Tile[,] map ) {
 			Console.WriteLine( "Map dimensions: "+map.GetLength(0)+","+map.GetLength(1) );
@@ -369,7 +376,7 @@ namespace Mapgen2d {
 
 	public static class MapGenExt {
 		public static Tile t( this Mapgen2d.Tile[,] map, Mapgen2d.MapGenerator.Point pt ) {
-			return map[pt._x,pt._y];
+			return map[pt.x,pt.y];
 		}	
 	}
 }

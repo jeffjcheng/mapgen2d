@@ -2,7 +2,7 @@ using System;
 
 namespace Mapgen2d {
 	public class Tile {
-		private static int group_id_counter = 0;
+		internal static int group_id_counter = 0;
 		internal static int next_group_id {
 			get {
 				return group_id_counter++;
@@ -16,11 +16,11 @@ namespace Mapgen2d {
 		}
 		
 		public Tile.Type type {
-			internal set; get;
+			set; get;
 		}
 		
 		public int group_id {
-			internal set; get;
+			set; get;
 		}
 		
 		public bool HasPassage( MapDirection dir ) {
@@ -33,7 +33,7 @@ namespace Mapgen2d {
 		
 		internal bool[] _passage;
 		
-		internal Tile( Type type = Type.IMPASSABLE) {
+		public Tile( Type type = Type.IMPASSABLE) {
 			this.type = type;
 			group_id = -1;
 			
